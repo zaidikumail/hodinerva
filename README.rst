@@ -1,21 +1,21 @@
-halofit
+hodinerva
 ============
 
-This library provides tools for fitting observed data, such as galaxy-galaxy clustering, and galaxy abundance with halo models.
+This library contains code for Halo Occupation Distribution (HOD) modeling of the MINERVA-JWST survey dataset.
 
 
 Installation
 ------------
 To install halofit into your environment from the source code::
 
-    $ cd /path/to/root/halofit
+    $ cd /path/to/root/hodinerva
     $ pip install -e .
 
 Testing
 -------
 To run the suite of unit tests::
 
-    $ cd /path/to/root/halofit
+    $ cd /path/to/root/hodinerva
     $ pytest
 
 To build html of test coverage::
