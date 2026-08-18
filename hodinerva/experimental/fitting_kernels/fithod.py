@@ -1,26 +1,27 @@
 import sys
 import time
 import warnings
+from pathlib import Path
 
 import emcee
 import halomod.tools as tools
 import numpy as np
 from astropy.io import ascii
-from halomod.integrate_corr import AngularCF
 from numpy.linalg import pinv
 from schwimmbad import MPIPool
-from scipy import interpolate
+
+from ..build_model import build_acf_model, build_smf_data
 
 
-class Fit_HOD:
+class Fithod:
     def __init__(
-        self, zmin, zmax, Nz_npy, RR_IC, sep_RR_IC, hod_model, hod_params, cosmo
+        self, zmin, zmax, Nz_npy, rr_ic_counts, rr_ic_sep, hod_model, hod_params, cosmo
     ):
         self.zmin = zmin
         self.zmax = zmax
         self.Nz_npy = Nz_npy
-        self.RR_IC = RR_IC
-        self.sep_RR_IC = sep_RR_IC
+        self.rr_ic_counts = rr_ic_counts
+        self.rr_ic_sep = rr_ic_sep
         self.hod_model = hod_model
         self.hod_params = hod_params
         self.cosmo = cosmo
@@ -36,12 +37,12 @@ class Fit_HOD:
         std = w_data["std"].data
         N = w_data["N"][0]
 
-        if isinstance(mock_out, str):
+        if isinstance(mock_out, Path):
             # mock covariance
             Cov = np.load(mock_out, allow_pickle=True).item()["Cov"]
             C_inv = pinv(Cov)
 
-        elif isinstance(cov_jknife_npy, str):
+        elif isinstance(cov_jknife_npy, Path):
             # jackknife covariance
             Cov = np.load(cov_jknife_npy)
             C_inv = pinv(Cov)
@@ -63,79 +64,19 @@ class Fit_HOD:
 
         return w_data
 
-    def setup_smf_data(self, SMF_data_ascii):
-        smf_data = ascii.read(SMF_data_ascii)
-        lmass_low = smf_data["lmasslow"].data
-        lmass = smf_data["lmass"].data
-        lmass_upp = smf_data["lmassupp"].data
-        lphi = smf_data["lphi"].data
-        lphi_h1p0 = np.log10((10**lphi) / (self.cosmo.h**3))
+    def setup_smf_data(self, smf_data_ascii):
+        self.smf_data = build_smf_data(smf_data_ascii, self.cosmo)
 
-        frac_errlow = smf_data["lphi_errlow"].data / lphi
-        lphi_errlow_h1p0 = frac_errlow * lphi_h1p0
-
-        frac_errupp = smf_data["lphi_errupp"].data / lphi
-        lphi_errupp_h1p0 = frac_errupp * lphi_h1p0
-
-        lphi_avg_err = (lphi_errlow_h1p0 + lphi_errupp_h1p0) / 2
-
-        self.smf_data = {
-            "lmass_low_h1p0": np.log10((10**lmass_low) * (self.cosmo.h**2)),
-            "lmass_h1p0": np.log10((10**lmass) * (self.cosmo.h**2)),
-            "lmass_upp_h1p0": np.log10((10**lmass_upp) * (self.cosmo.h**2)),
-            "lphi_h1p0": lphi_h1p0,
-            "lphi_err_h1p0": lphi_avg_err,
-        }
-
-    def setup_model(self, w_data_ascii):
-        # get data sep array
-        w_data = ascii.read(w_data_ascii)
-        sep = w_data["sep[deg]"].data
-
-        # Nz = np.load(self.Nz_npy, allow_pickle=True)
-        # nz = interp1d(Nz[0], Nz[1])
-
-        Nz = np.load(self.Nz_npy)
-        nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
-
-        """Get Model"""
-        # To choose theta, set it in degrees then convert to radians
-        theta_min = self.sep_RR_IC.min() * np.pi / 180.0
-        theta_max = self.sep_RR_IC.max() * np.pi / 180.0
-        theta_num = len(self.sep_RR_IC)
-
-        model = AngularCF(
-            hmf_model="Courtin",
-            bias_model="Tinker10",
-            # sd_bias_model='TinkerSD05',
-            transfer_model="EH",
-            halo_concentration_model="Duffy08",
-            halo_profile_model="NFW",
-            mdef_model="FOF",
-            cosmo_model=self.cosmo,
-            hod_model=self.hod_model,
-            hod_params=self.hod_params,
-            logu_min=-3,
-            logu_max=1.5,
-            rnum=200,
-            p1=nz,
-            zmin=self.zmin,
-            zmax=self.zmax,
-            z=self.zmin + ((self.zmax - self.zmin) / 2),
-            theta_min=theta_min,
-            theta_max=theta_max,
-            theta_num=theta_num,
-            theta_log=True,
-            p_of_z=True,
+    def setup_model(self, sep):
+        self.model = build_acf_model(
+            sep,
+            self.Nz_npy,
+            self.cosmo,
+            self.hod_model,
+            self.hod_params,
+            self.zmin,
+            self.zmax,
         )
-
-        model.update(
-            theta_min=sep.min() * np.pi / 180.0,
-            theta_max=sep.max() * np.pi / 180.0,
-            theta_num=len(sep),
-        )
-
-        self.model = model.clone()
 
     def chi_square(self):
         chi_sq = 0
@@ -150,11 +91,13 @@ class Fit_HOD:
                 print("Zheng05 model, no updating stellar mass thresholds")
             # update the thetas of the model to calculate the IC with the new hod parameters
             self.model.update(
-                theta_min=self.sep_RR_IC.min() * np.pi / 180.0,
-                theta_max=self.sep_RR_IC.max() * np.pi / 180.0,
-                theta_num=len(self.sep_RR_IC),
+                theta_min=self.rr_ic_sep.min() * np.pi / 180.0,
+                theta_max=self.rr_ic_sep.max() * np.pi / 180.0,
+                theta_num=len(self.rr_ic_sep),
             )
-            IC = np.sum(self.model.angular_corr_gal * self.RR_IC) / np.sum(self.RR_IC)
+            IC = np.sum(self.model.angular_corr_gal * self.rr_ic_counts) / np.sum(
+                self.rr_ic_counts
+            )
 
             # revert back the thetas to calculate the chi-square
             self.model.update(
@@ -269,7 +212,7 @@ class Fit_HOD:
         out = (ll,) + derived + (chi_sq,)
         return out
 
-    def run_mcmc(self, nwalkers=20, ndim=5, nsteps=10, restart=0):
+    def run_mcmc(self, nwalkers=20, ndim=5, nsteps=10, restart=False):
         with MPIPool() as pool:
             if not pool.is_master():
                 pool.wait()
@@ -286,7 +229,7 @@ class Fit_HOD:
 
             start = time.time()
 
-            if restart == 1:
+            if restart:
                 sampler.run_mcmc(None, nsteps=nsteps, progress=True)
             else:
                 initialpos_normal = self.initialpos + 1e-4 * np.random.normal(

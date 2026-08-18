@@ -1,3 +1,6 @@
+import numpy as np
+from astropy.io import ascii
+from astropy.table import Column, Table
 from pycorr import (
     KMeansSubsampler,
     TwoPointCorrelationFunction,
@@ -9,12 +12,11 @@ from pycorr import (
 setup_logging()
 
 
-def create_subsampler(cat, nsamples):
+def create_subsampler(data_radec, nsamples):
     mpicomm = mpi.COMM_WORLD
     mpiroot = 0
 
     if mpicomm.rank == mpiroot:
-        data_radec = cat["RA"].data, cat["DEC"].data
         data_radec = list(data_radec)
     else:
         data_radec = None
@@ -33,36 +35,25 @@ def create_subsampler(cat, nsamples):
     subsampler.log_info(
         "Labels from {:d} to {:d}.".format(data_samples.min(), data_samples.max())
     )
+    return subsampler, data_samples, mpicomm, mpiroot
 
 
 def evaluate_tpcf(
-    cat,
+    data_radec,
+    ran_radec,
     subsampler,
     bin_edges,
-    rand_RA,
-    rand_DEC,
     mpicomm,
     mpiroot,
     savedir,
     savename,
     R1R2=None,
-    cat2=[],
 ):
     if mpicomm.rank == mpiroot:
-        data_radec = cat["RA"].data, cat["DEC"].data
         data_radec = list(data_radec)
-
-        if len(cat2) != 0:
-            data_radec_2 = cat2["RA"].data, cat2["DEC"].data
-            data_radec_2 = list(data_radec_2)
-
-        rand_radec = rand_RA, rand_DEC
-        rand_radec = list(rand_radec)
+        ran_radec = list(ran_radec)
     else:
-        data_radec, rand_radec = None, None
-
-        if len(cat2) != 0:
-            data_radec_2 = None
+        data_radec, ran_radec = None, None
 
     if mpicomm.rank == mpiroot:
         data_samples = subsampler.label(data_radec)
@@ -70,15 +61,7 @@ def evaluate_tpcf(
             "Labels from {:d} to {:d}.".format(data_samples.min(), data_samples.max())
         )
 
-        if len(cat2) != 0:
-            data_samples_2 = subsampler.label(data_radec_2)
-            subsampler.log_info(
-                "Labels from {:d} to {:d}.".format(
-                    data_samples_2.min(), data_samples_2.max()
-                )
-            )
-
-        randoms_samples = subsampler.label(rand_radec)
+        randoms_samples = subsampler.label(ran_radec)
         subsampler.log_info(
             "Labels from {:d} to {:d}.".format(
                 randoms_samples.min(), randoms_samples.max()
@@ -87,91 +70,82 @@ def evaluate_tpcf(
     else:
         data_samples, randoms_samples = None, None
 
-        if len(cat2) != 0:
-            data_samples_2 = None
+    result = TwoPointCorrelationFunction(
+        "theta",
+        bin_edges,
+        data_positions1=data_radec,
+        randoms_positions1=ran_radec,
+        data_samples1=data_samples,
+        randoms_samples1=randoms_samples,
+        R1R2=R1R2,
+        engine="corrfunc",
+        compute_sepsavg=False,
+        estimator="landyszalay",
+        position_type="rd",
+        nthreads=5,
+        mpicomm=mpicomm,
+        mpiroot=mpiroot,
+        nprocs_per_real=2,
+    )
 
-    if R1R2 is None:
-        if len(cat2) == 0:
-            result = TwoPointCorrelationFunction(
-                "theta",
-                bin_edges,
-                data_positions1=data_radec,
-                randoms_positions1=rand_radec,
-                data_samples1=data_samples,
-                randoms_samples1=randoms_samples,
-                engine="corrfunc",
-                compute_sepsavg=False,
-                estimator="landyszalay",
-                position_type="rd",
-                nthreads=64,
-                mpicomm=mpicomm,
-                mpiroot=mpiroot,
-                nprocs_per_real=2,
-            )
-        else:
-            result = TwoPointCorrelationFunction(
-                "theta",
-                bin_edges,
-                data_positions1=data_radec,
-                data_positions2=data_radec_2,
-                randoms_positions1=rand_radec,
-                randoms_positions2=rand_radec,
-                data_samples1=data_samples,
-                data_samples2=data_samples_2,
-                randoms_samples1=randoms_samples,
-                randoms_samples2=randoms_samples,
-                engine="corrfunc",
-                compute_sepsavg=False,
-                estimator="landyszalay",
-                position_type="rd",
-                nthreads=64,
-                mpicomm=mpicomm,
-                mpiroot=mpiroot,
-                nprocs_per_real=2,
-            )
-    else:
-        if len(cat2) == 0:
-            result = TwoPointCorrelationFunction(
-                "theta",
-                bin_edges,
-                data_positions1=data_radec,
-                randoms_positions1=rand_radec,
-                data_samples1=data_samples,
-                randoms_samples1=randoms_samples,
-                R1R2=R1R2,
-                engine="corrfunc",
-                compute_sepsavg=False,
-                estimator="landyszalay",
-                position_type="rd",
-                nthreads=64,
-                mpicomm=mpicomm,
-                mpiroot=mpiroot,
-                nprocs_per_real=2,
-            )
+    save_tpcf = savedir + "/tpcf/" + savename + ".npy"
+    result.save(save_tpcf)
 
-        else:
-            result = TwoPointCorrelationFunction(
-                "theta",
-                bin_edges,
-                data_positions1=data_radec,
-                data_positions2=data_radec_2,
-                randoms_positions1=rand_radec,
-                randoms_positions2=rand_radec,
-                data_samples1=data_samples,
-                data_samples2=data_samples_2,
-                randoms_samples1=randoms_samples,
-                randoms_samples2=randoms_samples,
-                R1R2=R1R2,
-                engine="corrfunc",
-                compute_sepsavg=False,
-                estimator="landyszalay",
-                position_type="rd",
-                nthreads=64,
-                mpicomm=mpicomm,
-                mpiroot=mpiroot,
-                nprocs_per_real=2,
-            )
+    save_cov = savedir + "/cov/cov_" + savename + ".npy"
+    save_w_theta = savedir + "/w_theta/w_" + savename + ".dat"
 
-    result.save(savedir + "/" + savename + ".npy")
+    save_cov_and_w_theta(
+        result.sep,
+        result.corr,
+        result.cov(),
+        result.D1D2.normalized_wcounts(),
+        result.D1R2.normalized_wcounts(),
+        result.R1R2.normalized_wcounts(),
+        result.D1D2.size1,
+        save_cov,
+        save_w_theta,
+    )
 
     return result
+
+
+def save_cov_and_w_theta(sep, corr, cov, DD, DR, RR, N, save_cov, save_w_theta):
+    np.save(save_cov, cov)
+    n_scales = len(sep)
+    std = np.sqrt(np.diagonal(cov))
+
+    w_theta = Table()
+    w_theta.add_column(Column(name="sep[deg]", length=n_scales))
+    w_theta["sep[deg]"] = sep
+    w_theta["sep[deg]"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="DD", length=n_scales))
+    w_theta["DD"] = DD
+    w_theta["DD"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="DR", length=n_scales))
+    w_theta["DR"] = DR
+    w_theta["DR"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="RR", length=n_scales))
+    w_theta["RR"] = RR
+    w_theta["RR"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="corr", length=n_scales))
+    w_theta["corr"] = corr
+    w_theta["corr"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="std", length=n_scales))
+    w_theta["std"] = std
+    w_theta["std"].info.format = "11.10f"
+
+    w_theta.add_column(Column(name="N", length=n_scales, dtype="int"))
+    w_theta["N"] = N
+
+    ascii.write(
+        w_theta,
+        save_w_theta,
+        format="fixed_width",
+        delimiter=" ",
+        overwrite=True,
+    )
