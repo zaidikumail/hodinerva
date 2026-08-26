@@ -222,17 +222,17 @@ def plot_tpcf(
 
         inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
 
-        phi = smf_data[smf_z_name].data
-        lphi = np.log10(phi)
+        phi_data = smf_data[smf_z_name].data
+        lphi_data = np.log10(phi_data)
 
         err_hi = smf_data[smf_z_name + "_err_hi"].data
         err_lo = smf_data[smf_z_name + "_err_lo"].data
-        lphi_err_hi = np.log10(phi + err_hi) - np.log10(phi)
-        lphi_err_lo = np.log10(phi) - np.log10(phi - err_lo)
+        lphi_err_hi = np.log10(phi_data + err_hi) - np.log10(phi_data)
+        lphi_err_lo = np.log10(phi_data) - np.log10(phi_data - err_lo)
 
         inset_smf.errorbar(
             lmass,
-            lphi,
+            lphi_data,
             yerr=[lphi_err_lo, lphi_err_hi],
             c=colors_z[zbin][-1],
             ms=1,
@@ -294,12 +294,14 @@ def plot_tpcf(
             zbins[zbin][1],
         )
 
-        lphi_model = get_model_smf(
+        lphi_model_h1p0 = get_model_smf(
             acf_model, smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name
         )
+        lphi_model_h0p7 = np.log10((10**lphi_model_h1p0) * (DEFAULT_COSMOLOGY.h**3))
+
         inset_smf.plot(
             lmass,
-            lphi_model,
+            lphi_model_h0p7,
             c=colors_z[zbin][-1],
             alpha=0.5,
         )

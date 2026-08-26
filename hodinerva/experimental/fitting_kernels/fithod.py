@@ -4,18 +4,27 @@ import warnings
 from pathlib import Path
 
 import emcee
-import halomod.tools as tools
 import numpy as np
 from astropy.io import ascii
 from numpy.linalg import pinv
 from schwimmbad import MPIPool
 
-from ..build_model import build_acf_model, build_smf_data
+from ..build_model import build_acf_model, build_smf_data, get_model_smf
 
 
 class Fithod:
     def __init__(
-        self, zmin, zmax, Nz_npy, rr_ic_counts, rr_ic_sep, hod_model, hod_params, cosmo
+        self,
+        zmin,
+        zmax,
+        Nz_npy,
+        rr_ic_counts,
+        rr_ic_sep,
+        hod_model,
+        hod_params,
+        cosmo,
+        smf_data_fits,
+        smf_z_name,
     ):
         self.zmin = zmin
         self.zmax = zmax
@@ -25,6 +34,8 @@ class Fithod:
         self.hod_model = hod_model
         self.hod_params = hod_params
         self.cosmo = cosmo
+        self.smf_data_fits = smf_data_fits
+        self.smf_z_name = smf_z_name
 
     def setup_w_data(self, sm_thresh, w_data_ascii, cov_jknife_npy=None, mock_out=None):
         """Get correlation function data"""
@@ -64,8 +75,8 @@ class Fithod:
 
         return w_data
 
-    def setup_smf_data(self, smf_data_fits, z_name):
-        self.smf_data = build_smf_data(smf_data_fits, self.cosmo, z_name)
+    def setup_smf_data(self):
+        self.smf_data = build_smf_data(self.smf_data_fits, self.cosmo, self.smf_z_name)
 
     def setup_model(self, sep):
         self.model = build_acf_model(
@@ -123,32 +134,14 @@ class Fithod:
             chi_sq += d_chi
 
         # SMF term
-        delta_logMbin = (
-            self.smf_data["lmass_upp_h1p0"][0] - self.smf_data["lmass_low_h1p0"][0]
+        lphi_model_h1p0 = get_model_smf(
+            self.model, self.smf_data_fits, self.cosmo, self.smf_z_name
         )
-        for Mbin in range(0, len(self.smf_data["lmass_h1p0"])):
-            self.model.update(
-                **{"hod_params": {"sm_thresh": self.smf_data["lmass_low_h1p0"][Mbin]}}
-            )
-            total_occupation_low = self.model._total_occupation
 
-            self.model.update(
-                **{"hod_params": {"sm_thresh": self.smf_data["lmass_upp_h1p0"][Mbin]}}
-            )
-            total_occupation_upp = self.model._total_occupation
+        lphi_data_h1p0 = self.smf_data["lphi_h1p0"]
+        lphi_err = self.smf_data["lphi_err_h1p0"]
 
-            total_occupation = total_occupation_low - total_occupation_upp
-            ngal = tools.spline_integral(
-                self.model.m, self.model.dndm * total_occupation
-            )
-            phi_model = ngal / delta_logMbin
-
-            phi_data = 10 ** self.smf_data["lphi_h1p0"][Mbin]
-            phi_err = 10 ** self.smf_data["lphi_err_h1p0"][Mbin]
-
-            chi_sq += (
-                (np.log10(phi_data) - np.log10(phi_model)) / (np.log10(phi_err))
-            ) ** 2
+        chi_sq += np.sum(((lphi_data_h1p0 - lphi_model_h1p0) / (lphi_err)) ** 2)
 
         return chi_sq
 

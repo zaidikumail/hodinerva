@@ -57,6 +57,9 @@ if __name__ == "__main__":
     nz_file = Path(cfg["base_path"]) / cfg["nz"]
     print(nz_file)
 
+    smf_data_fits = Path(cfg["base_path"]) / cfg["smf_data"]
+    smf_z_name = cfg["z_name"]
+
     # Initialize the Fithod class
     fit_hod = Fithod(
         zbins[zbin - 1][0],
@@ -67,7 +70,12 @@ if __name__ == "__main__":
         cfg["hod_model"],
         HOD_INITIALIZE_PARAMS,
         DEFAULT_COSMOLOGY,
+        smf_data_fits,
+        smf_z_name,
     )
+
+    # smf data
+    fit_hod.setup_smf_data()
 
     # w data
     w_datum = fit_hod.setup_w_data(
@@ -99,11 +107,6 @@ if __name__ == "__main__":
         )
         w_data.append(w_datum)
     fit_hod.w_data = w_data
-
-    # smf data
-    smf_data_fits = Path(cfg["base_path"]) / cfg["smf_data"]
-    z_name = cfg["z_name"]
-    fit_hod.setup_smf_data(smf_data_fits=smf_data_fits, z_name=z_name)
 
     # model
     w_data = ascii.read(w_data_ascii)
