@@ -64,8 +64,8 @@ class Fithod:
 
         return w_data
 
-    def setup_smf_data(self, smf_data_ascii):
-        self.smf_data = build_smf_data(smf_data_ascii, self.cosmo)
+    def setup_smf_data(self, smf_data_fits, z_name):
+        self.smf_data = build_smf_data(smf_data_fits, self.cosmo, z_name)
 
     def setup_model(self, sep):
         self.model = build_acf_model(
@@ -79,7 +79,7 @@ class Fithod:
         )
 
     def chi_square(self):
-        chi_sq = 0
+        chi_sq = 0.0
 
         # correlation function term
         for Mth in range(0, len(self.w_data)):

@@ -3,6 +3,7 @@ import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import ascii
+from astropy.table import Table
 from scipy import interpolate
 
 from ..build_model import build_acf_model, get_model_smf
@@ -10,16 +11,25 @@ from ..defaults import DEFAULT_COSMOLOGY, HOD_INITIALIZE_PARAMS
 from .plot_utils import scale_luminance
 
 plt.rc("font", family="serif", serif=["Times New Roman"])
+# colors = [
+#     "xkcd:lavender pink",
+#     "xkcd:cerulean",
+#     "xkcd:aqua",
+#     "xkcd:emerald green",
+#     "xkcd:avocado",
+#     "xkcd:peach",
+#     "xkcd:red pink",
+#     "xkcd:dark maroon",
+#     "xkcd:mustard",
+# ]
+
 colors = [
     "xkcd:lavender pink",
     "xkcd:cerulean",
-    "xkcd:aqua",
     "xkcd:emerald green",
     "xkcd:avocado",
     "xkcd:peach",
     "xkcd:red pink",
-    "xkcd:dark maroon",
-    "xkcd:mustard",
 ]
 
 
@@ -164,10 +174,10 @@ def _stellar_mass_colors(n, c1="tab:blue", c2="tab:orange"):
 
 def redshift_luminosity_colors(zbins, mstar_thresh, band_colors):
     colors_z = []
-    for zbin, color in enumerate(band_colors):
+    for zbin in range(0, len(zbins)):
         n_lum = len(mstar_thresh[zbin])
         scales = np.linspace(1.2, 0.4, n_lum)
-        colors_z.append([scale_luminance(color, s) for s in scales])
+        colors_z.append([scale_luminance(colors[zbin], s) for s in scales])
     return colors_z
 
 
@@ -182,7 +192,7 @@ def plot_tpcf(
     hod_model="Leauthaud11",
     plt_show=True,
 ):
-    fig, ax = plt.subplots(3, 3, figsize=(7.1, 7.1))
+    fig, ax = plt.subplots(2, 3, figsize=(7.1, 4.5))
     fig.subplots_adjust(
         wspace=0, hspace=0, left=0.09, right=0.99, top=0.99, bottom=0.075
     )
@@ -194,8 +204,15 @@ def plot_tpcf(
     col = 0
     colors_z = redshift_luminosity_colors(zbins, mstar_thresh, colors)
     hod_post = ascii.read(hod_post_ecsv)
+
+    smf_data_fits = smf_dir + "/smf_uds_cosmos_v0.1.fits"
+    smf_data = Table.read(smf_data_fits)
+    lmass = smf_data["Mbin"].data
+    smf_z_names = ["2.0", "3.0", "4.0", "5.0", "6.0", "7.5", "10.0"]
+
     for zbin in range(0, len(zbins)):
         z_name = "z" + str(zbin + 1)
+        smf_z_name = smf_z_names[zbin]
         z_min_label = str(np.round(zbins[zbin][0], 2))
         z_max_label = str(np.round(zbins[zbin][1], 2))
 
@@ -203,21 +220,27 @@ def plot_tpcf(
             z_min_label + " < z < " + z_max_label, y=0.85, fontsize=fontsize + 2
         )
 
-        smf_data_ascii = smf_dir + "/smf_z4.dat"
-        smf_data = ascii.read(smf_data_ascii)
-
         inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
+
+        phi = smf_data[smf_z_name].data
+        lphi = np.log10(phi)
+
+        err_hi = smf_data[smf_z_name + "_err_hi"].data
+        err_lo = smf_data[smf_z_name + "_err_lo"].data
+        lphi_err_hi = np.log10(phi + err_hi) - np.log10(phi)
+        lphi_err_lo = np.log10(phi) - np.log10(phi - err_lo)
+
         inset_smf.errorbar(
-            smf_data["lmass"],
-            smf_data["lphi"],
-            yerr=[smf_data["lphi_errlow"], smf_data["lphi_errlow"]],
+            lmass,
+            lphi,
+            yerr=[lphi_err_lo, lphi_err_hi],
             c=colors_z[zbin][-1],
             ms=1,
             fmt="o",
             capsize=0,
             elinewidth=0.5,
         )
-        inset_smf.set_ylim(-6, -1.0)
+        inset_smf.set_ylim(-6, 0)
         inset_smf.set_xlim(6.2, 12)
         inset_smf.set_ylabel("log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1)
         inset_smf.set_xlabel("log$_{10}$(M$_{*}$)", fontsize=fontsize / 2, labelpad=-1)
@@ -271,9 +294,11 @@ def plot_tpcf(
             zbins[zbin][1],
         )
 
-        lphi_model = get_model_smf(acf_model, smf_data_ascii, DEFAULT_COSMOLOGY)
+        lphi_model = get_model_smf(
+            acf_model, smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name
+        )
         inset_smf.plot(
-            smf_data["lmass"],
+            lmass,
             lphi_model,
             c=colors_z[zbin][-1],
             alpha=0.5,

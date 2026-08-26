@@ -101,8 +101,9 @@ if __name__ == "__main__":
     fit_hod.w_data = w_data
 
     # smf data
-    smf_data_ascii = Path(cfg["base_path"]) / cfg["smf_data_dir"] / f"smf_z{zbin+1}.dat"
-    fit_hod.setup_smf_data(smf_data_ascii=smf_data_ascii)
+    smf_data_fits = Path(cfg["base_path"]) / cfg["smf_data"]
+    z_name = cfg["z_name"]
+    fit_hod.setup_smf_data(smf_data_fits=smf_data_fits, z_name=z_name)
 
     # model
     w_data = ascii.read(w_data_ascii)

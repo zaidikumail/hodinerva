@@ -1,6 +1,7 @@
 import halomod.tools as tools
 import numpy as np
 from astropy.io import ascii
+from astropy.table import Table
 from halomod.integrate_corr import AngularCF
 from scipy import interpolate
 
@@ -53,7 +54,7 @@ def build_acf_model(sep, Nz_npy, cosmo, hod_model, hod_params, zmin, zmax):
     return model.clone()
 
 
-def build_smf_data(smf_data_ascii, cosmo):
+def build_smf_data_old(smf_data_ascii, cosmo):
     smf_data = ascii.read(smf_data_ascii)
     lmass_low = smf_data["lmasslow"].data
     lmass = smf_data["lmass"].data
@@ -79,22 +80,50 @@ def build_smf_data(smf_data_ascii, cosmo):
     return smf_data
 
 
-def get_model_smf(model, smf_data_ascii, cosmo):
-    smf_data = build_smf_data(smf_data_ascii, cosmo)
+def build_smf_data(smf_data_fits, cosmo, z_name):
+    smf_data = Table.read(smf_data_fits)
+
+    lmass = smf_data["Mbin"].data
+    lmass_h1p0 = np.log10((10**lmass) * (cosmo.h**2))
+
+    phi = smf_data[z_name].data
+    err_hi = smf_data[z_name + "_err_hi"].data
+    err_lo = smf_data[z_name + "_err_lo"].data
+
+    lphi_h1p0 = np.log10((phi) / (cosmo.h**3))
+
+    lphi_err_hi = np.log10(phi + err_hi) - np.log10(phi)
+    lphi_err_lo = np.log10(phi) - np.log10(phi - err_lo)
+
+    lphi_avg_err = (lphi_err_hi + lphi_err_lo) / 2
+
+    smf_data = {
+        "lmass_h1p0": lmass_h1p0,
+        "lphi_h1p0": lphi_h1p0,
+        "lphi_err_h1p0": lphi_avg_err,
+    }
+    return smf_data
+
+
+def get_model_smf(model, smf_data_fits, cosmo, z_name):
+    smf_data = build_smf_data(smf_data_fits, cosmo, z_name)
 
     phi_model = []
-    # SMF
-    delta_logMbin = smf_data["lmass_upp_h1p0"][0] - smf_data["lmass_low_h1p0"][0]
+    dlogMbin = np.diff(smf_data["lmass_h1p0"])[0] / 2
     for Mbin in range(0, len(smf_data["lmass_h1p0"])):
-        model.update(**{"hod_params": {"sm_thresh": smf_data["lmass_low_h1p0"][Mbin]}})
-        total_occupation_low = model._total_occupation
+        model.update(
+            **{"hod_params": {"sm_thresh": smf_data["lmass_h1p0"][Mbin] - dlogMbin}}
+        )
+        total_occupation_lo = model._total_occupation
 
-        model.update(**{"hod_params": {"sm_thresh": smf_data["lmass_upp_h1p0"][Mbin]}})
-        total_occupation_upp = model._total_occupation
+        model.update(
+            **{"hod_params": {"sm_thresh": smf_data["lmass_h1p0"][Mbin] + dlogMbin}}
+        )
+        total_occupation_hi = model._total_occupation
 
-        total_occupation = total_occupation_low - total_occupation_upp
+        total_occupation = total_occupation_lo - total_occupation_hi
         ngal = tools.spline_integral(model.m, model.dndm * total_occupation)
-        phi_model.append(ngal / delta_logMbin)
+        phi_model.append(ngal / dlogMbin)
     lphi_model_h0p7 = np.log10(np.array(phi_model) * (cosmo.h**3))
 
     return lphi_model_h0p7

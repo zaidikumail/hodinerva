@@ -4,7 +4,8 @@ mstar_thresh: clustering/mstar_thresh.npy
 nz: clustering/uds/nz/z1_m1.npy
 rr_ic: clustering/uds/tpcf/rr_ic.npy
 w_data_dir: clustering/uds/w_theta
-smf_data_dir: smf
+smf_data: smf/smf_uds_cosmos_v0.1.fits
+z_name: "2.0"
 hod_post_initialpos: clustering/hod_posteriors/hod_post_138.ecsv
 
 zbin: 3

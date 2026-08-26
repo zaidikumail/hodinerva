@@ -4,7 +4,30 @@ from pycorr import TwoPointCorrelationFunction
 from .tpcf import save_cov_and_w_theta
 
 
-def get_combined_corr(tpcf_bns, sample, weights):
+def get_field_weighted_corr(sep, DDs, DRs, RRs, weights):
+    n_sep = len(sep)
+
+    DD = np.zeros(n_sep)
+    DR = np.zeros(n_sep)
+    RR = np.zeros(n_sep)
+
+    for field in range(0, len(weights)):
+        DD += weights[field] * DDs[field]
+        DR += weights[field] * DRs[field]
+        RR += weights[field] * RRs[field]
+
+    corr = (DD - (2 * (DR)) + RR) / RR
+
+    return (
+        sep,
+        DD,
+        DR,
+        RR,
+        corr,
+    )
+
+
+def get_combined_corr_data(tpcf_bns, sample, weights):
     tpcf = TwoPointCorrelationFunction.load(tpcf_bns[0] + "/" + sample)
     sep = tpcf.sep
     n_sep = len(sep)
@@ -13,17 +36,26 @@ def get_combined_corr(tpcf_bns, sample, weights):
     DR = np.zeros(n_sep)
     RR = np.zeros(n_sep)
 
+    DDs = []
+    DRs = []
+    RRs = []
     N = 0
     for field in range(0, len(tpcf_bns)):
         tpcf = TwoPointCorrelationFunction.load(tpcf_bns[field] + "/" + sample)
 
-        DD += weights[field] * tpcf.D1D2.normalized_wcounts()
-        DR += weights[field] * tpcf.D1R2.normalized_wcounts()
-        RR += weights[field] * tpcf.R1R2.normalized_wcounts()
+        DDs.append(tpcf.D1D2.normalized_wcounts())
+        DRs.append(tpcf.D1R2.normalized_wcounts())
+        RRs.append(tpcf.R1R2.normalized_wcounts())
 
         N += tpcf.D1D2.size1
 
-    corr = (DD - (2 * (DR)) + RR) / RR
+    (
+        sep,
+        DD,
+        DR,
+        RR,
+        corr,
+    ) = get_field_weighted_corr(sep, DDs, DRs, RRs, weights)
 
     return (
         sep,
@@ -56,7 +88,7 @@ def combine_tpcf_fields(tpcf_bns, samples, weights, savedir):
             RR,
             corr,
             N,
-        ) = get_combined_corr(tpcf_bns, sample, weights)
+        ) = get_combined_corr_data(tpcf_bns, sample, weights)
 
         cov = get_combined_cov(tpcf_bns, sample, weights)
 
