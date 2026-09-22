@@ -9,7 +9,7 @@ from astropy.io import ascii
 from pycorr import TwoPointCorrelationFunction, setup_logging
 
 from hodinerva.experimental.defaults import DEFAULT_COSMOLOGY, HOD_INITIALIZE_PARAMS
-from hodinerva.experimental.fitting_kernels.fithod import Fithod
+from hodinerva.experimental.optimize.fithod import Fithod
 
 os.environ["OMP_NUM_THREADS"] = "1"
 setup_logging()

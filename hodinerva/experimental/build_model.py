@@ -20,13 +20,13 @@ def build_acf_model(sep, Nz_npy, cosmo, hod_model, hod_params, zmin, zmax):
     # theta_num = len(rr_ic_sep)
 
     model = AngularCF(
-        hmf_model="Courtin",
+        hmf_model="Tinker10",
         bias_model="Tinker10",
         # sd_bias_model='TinkerSD05',
         transfer_model="EH",
         halo_concentration_model="Duffy08",
         halo_profile_model="NFW",
-        # mdef_model="FOF",
+        mdef_model="SOVirial",
         cosmo_model=cosmo,
         hod_model=hod_model,
         hod_params=hod_params,

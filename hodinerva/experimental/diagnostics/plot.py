@@ -188,6 +188,7 @@ def plot_tpcf(
     w_data_dir,
     Nz_dir,
     save_dir,
+    savename,
     hod_post_ecsv,
     hod_model="Leauthaud11",
     plt_show=True,
@@ -211,175 +212,189 @@ def plot_tpcf(
     smf_z_names = ["2.0", "3.0", "4.0", "5.0", "6.0", "7.5", "10.0"]
 
     for zbin in range(0, len(zbins)):
-        z_name = "z" + str(zbin + 1)
-        smf_z_name = smf_z_names[zbin]
-        z_min_label = str(np.round(zbins[zbin][0], 2))
-        z_max_label = str(np.round(zbins[zbin][1], 2))
+        try:
+            z_name = "z" + str(zbin + 1)
+            smf_z_name = smf_z_names[zbin]
+            z_min_label = str(np.round(zbins[zbin][0], 2))
+            z_max_label = str(np.round(zbins[zbin][1], 2))
 
-        ax[row][col].set_title(
-            z_min_label + " < z < " + z_max_label, y=0.85, fontsize=fontsize + 2
-        )
+            ax[row][col].set_title(
+                z_min_label + " < z < " + z_max_label, y=0.85, fontsize=fontsize + 2
+            )
 
-        inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
+            inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
 
-        phi_data = smf_data[smf_z_name].data
-        lphi_data = np.log10(phi_data)
+            phi_data = smf_data[smf_z_name].data
+            lphi_data = np.log10(phi_data)
 
-        err_hi = smf_data[smf_z_name + "_err_hi"].data
-        err_lo = smf_data[smf_z_name + "_err_lo"].data
-        lphi_err_hi = np.log10(phi_data + err_hi) - np.log10(phi_data)
-        lphi_err_lo = np.log10(phi_data) - np.log10(phi_data - err_lo)
+            err_hi = smf_data[smf_z_name + "_err_hi"].data
+            err_lo = smf_data[smf_z_name + "_err_lo"].data
+            lphi_err_hi = np.log10(phi_data + err_hi) - np.log10(phi_data)
+            lphi_err_lo = np.log10(phi_data) - np.log10(phi_data - err_lo)
 
-        inset_smf.errorbar(
-            lmass,
-            lphi_data,
-            yerr=[lphi_err_lo, lphi_err_hi],
-            c=colors_z[zbin][-1],
-            ms=1,
-            fmt="o",
-            capsize=0,
-            elinewidth=0.5,
-        )
-        inset_smf.set_ylim(-6, 0)
-        inset_smf.set_xlim(6.2, 12)
-        inset_smf.set_ylabel("log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1)
-        inset_smf.set_xlabel("log$_{10}$(M$_{*}$)", fontsize=fontsize / 2, labelpad=-1)
-        inset_smf.tick_params(
-            axis="both",
-            which="both",
-            direction="in",
-            labelsize=fontsize / 2,
-            length=fontsize / 4,
-        )
+            inset_smf.errorbar(
+                lmass,
+                lphi_data,
+                yerr=[lphi_err_lo, lphi_err_hi],
+                c=colors_z[zbin][-1],
+                ms=1,
+                fmt="o",
+                capsize=0,
+                elinewidth=0.5,
+            )
+            inset_smf.set_ylim(-6, 0)
+            inset_smf.set_xlim(6.2, 12)
+            inset_smf.set_ylabel(
+                "log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1
+            )
+            inset_smf.set_xlabel(
+                "log$_{10}$(M$_{*}$)", fontsize=fontsize / 2, labelpad=-1
+            )
+            inset_smf.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                labelsize=fontsize / 2,
+                length=fontsize / 4,
+            )
 
-        smhm_m0_0 = hod_post[hod_post["zbin"] == z_name]["smhm_m0_0"][0][0][1]
-        smhm_m1_0 = hod_post[hod_post["zbin"] == z_name]["smhm_m1_0"][0][0][1]
-        smhm_beta_0 = hod_post[hod_post["zbin"] == z_name]["smhm_beta_0"][0][0][1]
-        smhm_delta_0 = hod_post[hod_post["zbin"] == z_name]["smhm_delta_0"][0][0][1]
-        smhm_gamma_0 = hod_post[hod_post["zbin"] == z_name]["smhm_gamma_0"][0][0][1]
-        sig_logmstar = hod_post[hod_post["zbin"] == z_name]["sig_logmstar"][0][0][1]
-        alphasat = hod_post[hod_post["zbin"] == z_name]["alphasat"][0][0][1]
-        betasat = hod_post[hod_post["zbin"] == z_name]["betasat"][0][0][1]
-        bsat = hod_post[hod_post["zbin"] == z_name]["bsat"][0][0][1]
-        betacut = hod_post[hod_post["zbin"] == z_name]["betacut"][0][0][1]
-        bcut = hod_post[hod_post["zbin"] == z_name]["bcut"][0][0][1]
+            smhm_m0_0 = hod_post[hod_post["zbin"] == z_name]["smhm_m0_0"][0][0][1]
+            smhm_m1_0 = hod_post[hod_post["zbin"] == z_name]["smhm_m1_0"][0][0][1]
+            smhm_beta_0 = hod_post[hod_post["zbin"] == z_name]["smhm_beta_0"][0][0][1]
+            smhm_delta_0 = hod_post[hod_post["zbin"] == z_name]["smhm_delta_0"][0][0][1]
+            smhm_gamma_0 = hod_post[hod_post["zbin"] == z_name]["smhm_gamma_0"][0][0][1]
+            sig_logmstar = hod_post[hod_post["zbin"] == z_name]["sig_logmstar"][0][0][1]
+            alphasat = hod_post[hod_post["zbin"] == z_name]["alphasat"][0][0][1]
+            betasat = hod_post[hod_post["zbin"] == z_name]["betasat"][0][0][1]
+            bsat = hod_post[hod_post["zbin"] == z_name]["bsat"][0][0][1]
+            betacut = hod_post[hod_post["zbin"] == z_name]["betacut"][0][0][1]
+            bcut = hod_post[hod_post["zbin"] == z_name]["bcut"][0][0][1]
 
-        hod_params = {
-            **HOD_INITIALIZE_PARAMS,
-            "sm_thresh": mstar_thresh[zbin][0],
-            "smhm_m0_0": smhm_m0_0,
-            "smhm_m1_0": smhm_m1_0,
-            "smhm_beta_0": smhm_beta_0,
-            "smhm_delta_0": smhm_delta_0,
-            "smhm_gamma_0": smhm_gamma_0,
-            "sig_logmstar": sig_logmstar,
-            "alphasat": alphasat,
-            "betasat": betasat,
-            "bsat": bsat,
-            "betacut": betacut,
-            "bcut": bcut,
-        }
-        w_data_ascii = w_data_dir + "/w_" + z_name + "_m1.dat"
-        w_data = ascii.read(w_data_ascii)
-        sep = w_data["sep[deg]"].data
-        Nz_npy = Nz_dir + "/" + z_name + "_m1.npy"
-
-        acf_model = build_acf_model(
-            sep,
-            Nz_npy,
-            DEFAULT_COSMOLOGY,
-            hod_model,
-            hod_params,
-            zbins[zbin][0],
-            zbins[zbin][1],
-        )
-
-        lphi_model_h1p0 = get_model_smf(
-            acf_model, smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name
-        )
-        lphi_model_h0p7 = np.log10((10**lphi_model_h1p0) * (DEFAULT_COSMOLOGY.h**3))
-
-        inset_smf.plot(
-            lmass,
-            lphi_model_h0p7,
-            c=colors_z[zbin][-1],
-            alpha=0.5,
-        )
-
-        for mthresh in range(0, len(mstar_thresh[zbin])):
-            m_name = "m" + str(mthresh + 1)
-            savename = z_name + "_" + m_name
-
-            w_data_ascii = w_data_dir + "/w_" + savename + ".dat"
+            hod_params = {
+                **HOD_INITIALIZE_PARAMS,
+                "sm_thresh": mstar_thresh[zbin][0],
+                "smhm_m0_0": smhm_m0_0,
+                "smhm_m1_0": smhm_m1_0,
+                "smhm_beta_0": smhm_beta_0,
+                "smhm_delta_0": smhm_delta_0,
+                "smhm_gamma_0": smhm_gamma_0,
+                "sig_logmstar": sig_logmstar,
+                "alphasat": alphasat,
+                "betasat": betasat,
+                "bsat": bsat,
+                "betacut": betacut,
+                "bcut": bcut,
+            }
+            w_data_ascii = w_data_dir + "/w_" + z_name + "_m1.dat"
             w_data = ascii.read(w_data_ascii)
             sep = w_data["sep[deg]"].data
-            corr = w_data["corr"].data
-            std = w_data["std"].data
+            Nz_npy = Nz_dir + "/" + z_name + "_m1.npy"
 
-            ax[row][col].errorbar(
+            acf_model = build_acf_model(
                 sep,
-                corr,
-                std,
-                fmt="o",
-                ms=5,
-                markerfacecolor="none",
-                c=colors_z[zbin][mthresh],
-                label="lgmstar > " + str(np.round(mstar_thresh[zbin][mthresh], 1)),
-                capsize=1,
-                markeredgewidth=0.5,
-                elinewidth=1,
+                Nz_npy,
+                DEFAULT_COSMOLOGY,
+                hod_model,
+                hod_params,
+                zbins[zbin][0],
+                zbins[zbin][1],
             )
 
-            Nz_npy = Nz_dir + "/" + savename + ".npy"
-            Nz = np.load(Nz_npy)
-            nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
-            hod_params["sm_thresh"] = mstar_thresh[zbin][mthresh]
-            acf_model.update(p1=nz, hod_params=hod_params)
-
-            ax[row][col].plot(
-                sep, acf_model.angular_corr_gal, color=colors_z[zbin][mthresh], lw=1
+            lphi_model_h1p0 = get_model_smf(
+                acf_model, smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name
+            )
+            lphi_model_h0p7 = np.log10(
+                (10**lphi_model_h1p0) * (DEFAULT_COSMOLOGY.h**3)
             )
 
-        ax[row][col].set_yscale("log")
-        ax[row][col].set_xscale("log")
-        ax[row][col].set_ylim(5e-4, 2e1)
-        ax[row][col].set_xlim(7e-4, 0.2)
-        ax[row][col].legend(fontsize=5, loc="lower left")
-        ax[row][col].minorticks_on()
-        ax[row][col].tick_params(
-            which="major",
-            direction="in",
-            top=True,
-            right=True,
-            length=6,
-            width=1,
-            labelsize=labelsize,
-        )
-        ax[row][col].tick_params(
-            which="minor",
-            direction="in",
-            top=True,
-            right=True,
-            length=3,
-            width=0.8,
-            labelsize=labelsize,
-        )
+            inset_smf.plot(
+                lmass,
+                lphi_model_h0p7,
+                c=colors_z[zbin][-1],
+                alpha=0.5,
+            )
 
-        if row == 0:
-            ax[row][col].tick_params(labelbottom=False)
-        if col != 0:
-            ax[row][col].tick_params(labelleft=False)
+            for mthresh in range(0, len(mstar_thresh[zbin])):
+                m_name = "m" + str(mthresh + 1)
+                sample_name = z_name + "_" + m_name
 
-        if col == 2:
-            col = 0
-            row += 1
-        else:
-            col += 1
+                w_data_ascii = w_data_dir + "/w_" + sample_name + ".dat"
+                w_data = ascii.read(w_data_ascii)
+                sep = w_data["sep[deg]"].data
+                corr = w_data["corr"].data
+                std = w_data["std"].data
+
+                ax[row][col].errorbar(
+                    sep,
+                    corr,
+                    std,
+                    fmt="o",
+                    ms=5,
+                    markerfacecolor="none",
+                    c=colors_z[zbin][mthresh],
+                    label="lgmstar > " + str(np.round(mstar_thresh[zbin][mthresh], 1)),
+                    capsize=1,
+                    markeredgewidth=0.5,
+                    elinewidth=1,
+                )
+
+                Nz_npy = Nz_dir + "/" + sample_name + ".npy"
+                Nz = np.load(Nz_npy)
+                nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
+                hod_params["sm_thresh"] = mstar_thresh[zbin][mthresh]
+                acf_model.update(p1=nz, hod_params=hod_params)
+
+                ax[row][col].plot(
+                    sep, acf_model.angular_corr_gal, color=colors_z[zbin][mthresh], lw=1
+                )
+
+            ax[row][col].set_yscale("log")
+            ax[row][col].set_xscale("log")
+            ax[row][col].set_ylim(5e-4, 2e1)
+            ax[row][col].set_xlim(7e-4, 0.2)
+            ax[row][col].legend(fontsize=5, loc="lower left")
+            ax[row][col].minorticks_on()
+            ax[row][col].tick_params(
+                which="major",
+                direction="in",
+                top=True,
+                right=True,
+                length=6,
+                width=1,
+                labelsize=labelsize,
+            )
+            ax[row][col].tick_params(
+                which="minor",
+                direction="in",
+                top=True,
+                right=True,
+                length=3,
+                width=0.8,
+                labelsize=labelsize,
+            )
+
+            if row == 0:
+                ax[row][col].tick_params(labelbottom=False)
+            if col != 0:
+                ax[row][col].tick_params(labelleft=False)
+
+        except Exception as e:
+            print(
+                f"Skipping zbin {zbin} ({z_name if 'z_name' in locals() else '?'}): {e}"
+            )
+            ax[row][col].set_visible(False)
+
+        finally:
+            if col == 2:
+                col = 0
+                row += 1
+            else:
+                col += 1
 
     fig.supxlabel(r"$\theta$ [deg]", fontsize=fontsize)
     fig.supylabel(r"$\omega$($\theta$)", fontsize=fontsize)
     fig.savefig(
-        save_dir + "/w_data.png",
+        save_dir + "/" + savename + ".png",
         dpi=300,
     )
 
@@ -389,3 +404,16 @@ def plot_tpcf(
         plt.close()
 
     return acf_model
+
+
+def plot_chi_sq(backend_h5, discard=0, thin=1):
+    sampler = emcee.backends.HDFBackend(backend_h5, read_only=True)
+    blobs = sampler.get_blobs(discard=discard, thin=thin, flat=True)
+
+    # save hod parameter values at chi_sq min
+    min_idx = np.argmin(blobs["chi_sq"])
+    plt.plot(blobs["chi_sq"], "blue", alpha=0.3)
+    plt.axvline(min_idx, ls="--", lw=0.5, c="k", alpha=0.5)
+    plt.xlabel("iterations x walkers")
+    plt.ylabel("chi_sq")
+    plt.show()

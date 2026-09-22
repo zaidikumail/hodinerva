@@ -10,6 +10,7 @@ from numpy.linalg import pinv
 from schwimmbad import MPIPool
 
 from ..build_model import build_acf_model, build_smf_data, get_model_smf
+from .loss import chi_sq
 
 
 class Fithod:
@@ -90,60 +91,16 @@ class Fithod:
         )
 
     def chi_square(self):
-        chi_sq = 0.0
-
-        # correlation function term
-        for Mth in range(0, len(self.w_data)):
-            if self.hod_model == "Leauthaud11":
-                self.model.update(
-                    **{"hod_params": {"sm_thresh": self.w_data[Mth]["sm_thresh_h1p0"]}}
-                )
-            else:
-                print("Zheng05 model, no updating stellar mass thresholds")
-            # update the thetas of the model to calculate the IC with the new hod parameters
-            self.model.update(
-                theta_min=self.rr_ic_sep.min() * np.pi / 180.0,
-                theta_max=self.rr_ic_sep.max() * np.pi / 180.0,
-                theta_num=len(self.rr_ic_sep),
-            )
-            IC = np.sum(self.model.angular_corr_gal * self.rr_ic_counts) / np.sum(
-                self.rr_ic_counts
-            )
-
-            # revert back the thetas to calculate the chi-square
-            self.model.update(
-                theta_min=self.w_data[Mth]["sep"].min() * np.pi / 180.0,
-                theta_max=self.w_data[Mth]["sep"].max() * np.pi / 180.0,
-                theta_num=len(self.w_data[Mth]["sep"]),
-            )
-
-            # Add the contribution to the chi_sq of the current Mth sample
-            corr_model = self.model.angular_corr_gal - IC
-            corr_datum = self.w_data[Mth]["corr"]
-            C_inv = self.w_data[Mth]["C_inv"]
-            std = self.w_data[Mth]["std"]
-
-            # corr func term
-            corr_diff = corr_datum - corr_model
-
-            # chi_sq += np.sum(((corr_datum-corr_model)/std)**2)
-            d_chi = corr_diff.T @ C_inv @ corr_diff
-            d_chi2 = np.dot(corr_diff, np.dot(C_inv, corr_diff))
-            d_chi3 = np.matmul(np.matmul(corr_diff, C_inv), corr_diff)
-            print(f"w_m{Mth+1:02d}: Δχ² = {d_chi:.2f}, {d_chi2:.2f}, {d_chi3:.2f}")
-            chi_sq += d_chi
-
-        # SMF term
-        lphi_model_h1p0 = get_model_smf(
-            self.model, self.smf_data_fits, self.cosmo, self.smf_z_name
+        return chi_sq(
+            self.model,
+            self.w_data,
+            self.rr_ic_sep,
+            self.rr_ic_counts,
+            self.smf_data_fits,
+            self.smf_data,
+            self.smf_z_name,
+            self.cosmo,
         )
-
-        lphi_data_h1p0 = self.smf_data["lphi_h1p0"]
-        lphi_err = self.smf_data["lphi_err_h1p0"]
-
-        chi_sq += np.sum(((lphi_data_h1p0 - lphi_model_h1p0) / (lphi_err)) ** 2)
-
-        return chi_sq
 
     def flat_to_nested_dict(self, dct: dict) -> dict:
         """Convert a dct of key: value pairs into a nested dict.
