@@ -9,7 +9,7 @@ from astropy.io import ascii
 from numpy.linalg import pinv
 from schwimmbad import MPIPool
 
-from ..build_model import build_acf_model, build_smf_data, get_model_smf
+from ..build_model import build_acf_model, build_smf_data
 from .loss import chi_sq
 
 
