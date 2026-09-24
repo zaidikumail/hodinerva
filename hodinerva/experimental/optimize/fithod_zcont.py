@@ -8,6 +8,7 @@ from astropy.io import ascii
 from halomod.integrate_corr import AngularCF
 from numpy.linalg import pinv
 from schwimmbad import MPIPool
+from scipy import interpolate
 
 
 class Fit_HOD:

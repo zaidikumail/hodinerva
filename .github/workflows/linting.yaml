@@ -8,7 +8,7 @@ on:
 
 jobs:
   tests:
-    name: flake8 diffhtwo
+    name: flake8 hodinerva
     runs-on: "ubuntu-latest"
 
     steps:
@@ -45,4 +45,4 @@ jobs:
       - name: lint
         shell: bash -l {0}
         run: |
-          flake8 diffhtwo
+          flake8 hodinerva

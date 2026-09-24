@@ -7,20 +7,20 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "halofit/_version.py"
+write_to = "hodinerva/_version.py"
 write_to_template = "__version__ = '{version}'\n"
 
 [tool.setuptools]
 include-package-data = true
 packages = {find = {exclude=["tests*", "scripts*", "docs*", "notebooks*"]}}
-package-data = {halofit = ["data/*.txt", "tests/testing_data/*.npy"]}
-package-dir = {halofit = "halofit"}
+package-data = {hodinerva = ["data/*.txt", "tests/testing_data/*.npy"]}
+package-dir = {hodinerva = "hodinerva"}
 
 [project.urls]
-home = "https://github.com/zaidikumail/halofit"
+home = "https://github.com/zaidikumail/hodinerva"
 
 [project]
-name = "halofit"
+name = "hodinerva"
 authors = [
     {name = "Kumail Zaidi", email = "kzaidi@anl.gov"},
 ]
