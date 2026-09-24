@@ -43,7 +43,7 @@ def plot_nz(zbins, mstar_thresh, nz_dir, save_dir, plt_show=True):
         z_name = "z" + str(zbin + 1)
         for mthresh in range(0, 1):
             m_name = "m" + str(mthresh + 1)
-            savename = z_name + "_" + m_name
+            savename = "nz_" + z_name + "_" + m_name
             save_nz = nz_dir + "/" + savename + ".npy"
 
             n_of_z = np.load(save_nz)
@@ -211,7 +211,7 @@ def plot_tpcf(
     lmass = smf_data["Mbin"].data
     smf_z_names = ["2.0", "3.0", "4.0", "5.0", "6.0", "7.5", "10.0"]
 
-    for zbin in range(0, len(zbins)):
+    for zbin in range(len(zbins)):
         try:
             z_name = "z" + str(zbin + 1)
             smf_z_name = smf_z_names[zbin]
@@ -242,7 +242,7 @@ def plot_tpcf(
                 capsize=0,
                 elinewidth=0.5,
             )
-            inset_smf.set_ylim(-6, 0)
+            inset_smf.set_ylim(-6, 0.5)
             inset_smf.set_xlim(6.2, 12)
             inset_smf.set_ylabel(
                 "log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1
@@ -288,7 +288,7 @@ def plot_tpcf(
             w_data_ascii = w_data_dir + "/w_" + z_name + "_m1.dat"
             w_data = ascii.read(w_data_ascii)
             sep = w_data["sep[deg]"].data
-            Nz_npy = Nz_dir + "/" + z_name + "_m1.npy"
+            Nz_npy = Nz_dir + "/nz_" + z_name + "_m1.npy"
 
             acf_model = build_acf_model(
                 sep,
@@ -338,7 +338,7 @@ def plot_tpcf(
                     elinewidth=1,
                 )
 
-                Nz_npy = Nz_dir + "/" + sample_name + ".npy"
+                Nz_npy = Nz_dir + "/nz_" + sample_name + ".npy"
                 Nz = np.load(Nz_npy)
                 nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
                 hod_params["sm_thresh"] = mstar_thresh[zbin][mthresh]
@@ -380,7 +380,7 @@ def plot_tpcf(
 
         except Exception as e:
             print(
-                f"Skipping zbin {zbin} ({z_name if 'z_name' in locals() else '?'}): {e}"
+                f"Skipping zbin idx {zbin} ({z_name if 'z_name' in locals() else '?'}): {e}"
             )
             ax[row][col].set_visible(False)
 
@@ -412,8 +412,8 @@ def plot_chi_sq(backend_h5, discard=0, thin=1):
 
     # save hod parameter values at chi_sq min
     min_idx = np.argmin(blobs["chi_sq"])
-    plt.plot(blobs["chi_sq"], "blue", alpha=0.3)
+    plt.plot(np.log10(blobs["chi_sq"]), "blue", alpha=0.3)
     plt.axvline(min_idx, ls="--", lw=0.5, c="k", alpha=0.5)
     plt.xlabel("iterations x walkers")
-    plt.ylabel("chi_sq")
+    plt.ylabel(r"$\log_{10}(\chi^{2})$")
     plt.show()

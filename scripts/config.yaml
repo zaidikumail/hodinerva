@@ -2,24 +2,26 @@ base_path: /Users/kumail/minerva
 zbins: clustering/zbins.npy
 mstar_thresh: clustering/mstar_thresh.npy
 
-rr_ic: clustering/uds/tpcf/rr_ic.npy
-w_data_dir: clustering/uds/w_theta
-smf_data: smf/smf_uds_cosmos_v0.1.fits
-hod_post_initialpos: clustering/hod_posteriors/hod_post_138.ecsv
-
 z_name: "2.0"
-zbin: 1
-nz: clustering/uds/nz/z1_m1.npy
-backend_h5: clustering/chains/run1/z1.h5
-restart: True
+zbin: 0
+nz: clustering/all/nz/nz_z1_m1.npy
+backend_h5: clustering/chains/run2/z1.h5
+
+restart: False
+
+rr_ic: clustering/uds/tpcf/rr_ic.npy
+w_data_dir: clustering/all/w_theta
+cov_jknife_dir: clustering/all/cov
+smf_data: smf/smf_uds_cosmos_v0.1.fits
 
 n_walkers: 60
 n_dim: 11
-n_steps: 5
+n_steps: 1000
 hod_model: "Leauthaud11"
+hod_post_initialpos: clustering/hod_posteriors/hod_post_138.ecsv
 
 mock_errors: False  #'yes' or 'no'
-cov_jknife_dir: clustering/uds/cov
+
 mock_hod_runid: "5"  # runid based on which mock angular covariance was calculated
 mock_N_samples: 1000  # Number of mocks used to get covariance
 mock_out_npy: clustering/mock_output/test.npy

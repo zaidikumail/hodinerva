@@ -62,8 +62,8 @@ if __name__ == "__main__":
 
     # Initialize the Fithod class
     fit_hod = Fithod(
-        zbins[zbin - 1][0],
-        zbins[zbin - 1][1],
+        zbins[zbin][0],
+        zbins[zbin][1],
         nz_file,
         rr_ic_counts,
         rr_ic_sep,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     # w data
     w_datum = fit_hod.setup_w_data(
-        sm_thresh=mstar_thresh[zbin - 1][0],
+        sm_thresh=mstar_thresh[zbin][0],
         w_data_ascii=w_data_ascii,
         cov_jknife_npy=cov_jknife_npy,
         mock_out=mock_out,
@@ -172,6 +172,7 @@ if __name__ == "__main__":
     backend_h5 = Path(cfg["base_path"]) / cfg["backend_h5"]
 
     fit_hod.backend = emcee.backends.HDFBackend(backend_h5)
+
     sampler = fit_hod.run_mcmc(
         nwalkers=cfg["n_walkers"],
         ndim=cfg["n_dim"],
