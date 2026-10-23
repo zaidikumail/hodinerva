@@ -57,10 +57,9 @@ def get_smf_chi_sq(model, smf_data, cosmo):
     lphi_model_h1p0 = get_model_smf(model, smf_data, cosmo)
 
     lphi_data_h1p0 = smf_data["lphi_h1p0"]
-    lphi_err = smf_data["lphi_err_h1p0"]
+    lphi_err = smf_data["lphi_err"]
 
     chi_sq_per_bin = ((lphi_data_h1p0 - lphi_model_h1p0) / (lphi_err)) ** 2
-    chi_sq_per_bin = np.nan_to_num(chi_sq_per_bin, nan=0.0, posinf=0.0, neginf=0.0)
 
     chi_sq = np.sum(chi_sq_per_bin)
 

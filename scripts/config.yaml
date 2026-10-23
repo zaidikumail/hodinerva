@@ -5,7 +5,7 @@ mstar_thresh: clustering/mstar_thresh.npy
 z_name: "2.0"
 zbin: 0
 nz: clustering/all/nz/nz_z1_m1.npy
-backend_h5: clustering/chains/run1/z1.h5
+backend_h5: clustering/chains/run2/z1.h5
 
 restart: True
 
