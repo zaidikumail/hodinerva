@@ -1,0 +1,22 @@
+base_path: /Users/kumail/minerva
+
+zbins: clustering/zbins.npy
+mstar_thresh: clustering/mstar_thresh.npy
+
+hod_post: clustering/hod_posteriors/hod_post_138.ecsv
+smdpl_z: SMDPL/smdpl_z.npy
+
+area_deg2: [0.1, 0.1]
+
+simname: "SMDPL"
+halo_finder: "rockstar"
+version_name: "rockstar_v1.0_mvir_no_cuts"
+
+zbin: 5
+hod_model: "Leauthaud11"
+
+
+mock_hod_runid: "5"   # runid based on which mock angular covariance was calculated
+mock_N_samples: 2  # Number of mocks used to get covariance
+run_id: 1
+mock_out_dir: clustering/mock_output
