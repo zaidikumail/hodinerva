@@ -8,15 +8,13 @@ def chi_sq(
     w_data,
     w_rr_ic_sep,
     w_rr_ic_counts,
-    smf_data_fits,
     smf_data,
-    smf_z_name,
     cosmo,
 ):
     w_chi_sq = get_w_chi_sq(w_data, model, w_rr_ic_sep, w_rr_ic_counts)
     print(f"w: Δχ² = {w_chi_sq:.2f}")
 
-    smf_chi_sq = get_smf_chi_sq(model, smf_data_fits, smf_data, cosmo, smf_z_name)
+    smf_chi_sq = get_smf_chi_sq(model, smf_data, cosmo)
     print(f"SMF: Δχ² = {smf_chi_sq:.2f}")
 
     return w_chi_sq + smf_chi_sq
@@ -55,8 +53,8 @@ def get_w_chi_sq(w_data, model, rr_ic_sep, rr_ic_counts):
     return chi_sq
 
 
-def get_smf_chi_sq(model, smf_data_fits, smf_data, cosmo, smf_z_name):
-    lphi_model_h1p0 = get_model_smf(model, smf_data_fits, cosmo, smf_z_name)
+def get_smf_chi_sq(model, smf_data, cosmo):
+    lphi_model_h1p0 = get_model_smf(model, smf_data, cosmo)
 
     lphi_data_h1p0 = smf_data["lphi_h1p0"]
     lphi_err = smf_data["lphi_err_h1p0"]

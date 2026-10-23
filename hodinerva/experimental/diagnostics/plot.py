@@ -1,13 +1,16 @@
+import os
+
+import corner
 import emcee
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import ascii
-from astropy.table import Table
 from scipy import interpolate
 
-from ..build_model import build_acf_model, get_model_smf
+from ..build_model import build_acf_model, build_smf_data, get_model_smf
 from ..defaults import DEFAULT_COSMOLOGY, HOD_INITIALIZE_PARAMS
+from ..utils import get_quantiles
 from .plot_utils import scale_luminance
 
 plt.rc("font", family="serif", serif=["Times New Roman"])
@@ -207,8 +210,7 @@ def plot_tpcf(
     hod_post = ascii.read(hod_post_ecsv)
 
     smf_data_fits = smf_dir + "/smf_uds_cosmos_v0.1.fits"
-    smf_data = Table.read(smf_data_fits)
-    lmass = smf_data["Mbin"].data
+    # lmass = smf_data["Mbin"].data
     smf_z_names = ["2.0", "3.0", "4.0", "5.0", "6.0", "7.5", "10.0"]
 
     for zbin in range(len(zbins)):
@@ -220,42 +222,6 @@ def plot_tpcf(
 
             ax[row][col].set_title(
                 z_min_label + " < z < " + z_max_label, y=0.85, fontsize=fontsize + 2
-            )
-
-            inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
-
-            phi_data = smf_data[smf_z_name].data
-            lphi_data = np.log10(phi_data)
-
-            err_hi = smf_data[smf_z_name + "_err_hi"].data
-            err_lo = smf_data[smf_z_name + "_err_lo"].data
-            lphi_err_hi = np.log10(phi_data + err_hi) - np.log10(phi_data)
-            lphi_err_lo = np.log10(phi_data) - np.log10(phi_data - err_lo)
-
-            inset_smf.errorbar(
-                lmass,
-                lphi_data,
-                yerr=[lphi_err_lo, lphi_err_hi],
-                c=colors_z[zbin][-1],
-                ms=1,
-                fmt="o",
-                capsize=0,
-                elinewidth=0.5,
-            )
-            inset_smf.set_ylim(-6, 0.5)
-            inset_smf.set_xlim(6.2, 12)
-            inset_smf.set_ylabel(
-                "log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1
-            )
-            inset_smf.set_xlabel(
-                "log$_{10}$(M$_{*}$)", fontsize=fontsize / 2, labelpad=-1
-            )
-            inset_smf.tick_params(
-                axis="both",
-                which="both",
-                direction="in",
-                labelsize=fontsize / 2,
-                length=fontsize / 4,
             )
 
             smhm_m0_0 = hod_post[hod_post["zbin"] == z_name]["smhm_m0_0"][0][0][1]
@@ -300,18 +266,44 @@ def plot_tpcf(
                 zbins[zbin][1],
             )
 
-            lphi_model_h1p0 = get_model_smf(
-                acf_model, smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name
+            inset_smf = ax[row][col].inset_axes([0.65, 0.6, 0.3, 0.25])
+            smf_data = build_smf_data(
+                smf_data_fits, DEFAULT_COSMOLOGY, smf_z_name, mstar_thresh[zbin][0]
             )
-            lphi_model_h0p7 = np.log10(
-                (10**lphi_model_h1p0) * (DEFAULT_COSMOLOGY.h**3)
+            inset_smf.errorbar(
+                smf_data["lmass_h0p7"],
+                smf_data["lphi_h0p7"],
+                yerr=smf_data["lphi_err"],
+                c=colors_z[zbin][-1],
+                ms=1,
+                fmt="o",
+                capsize=0,
+                elinewidth=0.5,
             )
 
+            lphi_model_h1p0 = get_model_smf(acf_model, smf_data, DEFAULT_COSMOLOGY)
+            lphi_model_h0p7 = lphi_model_h1p0 + np.log10(DEFAULT_COSMOLOGY.h**3)
             inset_smf.plot(
-                lmass,
+                smf_data["lmass_h0p7"],
                 lphi_model_h0p7,
                 c=colors_z[zbin][-1],
                 alpha=0.5,
+            )
+
+            inset_smf.set_ylim(-6, 0.5)
+            inset_smf.set_xlim(6.2, 12)
+            inset_smf.set_ylabel(
+                "log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1
+            )
+            inset_smf.set_xlabel(
+                "log$_{10}$(M$_{*}$)", fontsize=fontsize / 2, labelpad=-1
+            )
+            inset_smf.tick_params(
+                axis="both",
+                which="both",
+                direction="in",
+                labelsize=fontsize / 2,
+                length=fontsize / 4,
             )
 
             for mthresh in range(0, len(mstar_thresh[zbin])):
@@ -417,3 +409,49 @@ def plot_chi_sq(backend_h5, discard=0, thin=1):
     plt.xlabel("iterations x walkers")
     plt.ylabel(r"$\log_{10}(\chi^{2})$")
     plt.show()
+
+
+def plot_corner(backend_h5, run_label, z_label, savedir, discard=0, thin=1):
+    quantiles, flatchain = get_quantiles(backend_h5, discard=discard, thin=thin)
+
+    fig = corner.corner(
+        flatchain,
+        labels=[
+            "M$_{\u002A,0}$",
+            "M$_{1}$",
+            "\u03b2",
+            "\u03b4",
+            "\u03b3",
+            "\u03c3$_{logM_\u002A}$",
+            "\u03b1$_{sat}$",
+            "\u03b2$_{sat}$",
+            "B$_{sat}$",
+            "\u03b2$_{cut}$",
+            "B$_{cut}$",
+        ],
+        quantiles=(0.16, 0.5, 0.84),
+        show_titles=True,
+        # range=lim,
+        levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-4)),
+        plot_datapoints=False,
+        plot_density=False,
+        fill_contours=True,
+        color="tab:orange",
+        hist_kwargs={"color": "black"},
+        title_kwargs={"fontsize": 22},
+        label_kwargs={"fontsize": 28},
+        smooth=0.5,
+        smooth1d=0.5,
+    )
+    fig.suptitle(z_label, fontsize=40)
+
+    # Adjust tick label font size
+    axes = np.array(fig.axes).reshape((11, 11))
+    for ax in axes[:, 0]:  # Y-axis tick labels
+        ax.tick_params(axis="y", labelsize=14)
+    for ax in axes[-1, :]:  # X-axis tick labels
+        ax.tick_params(axis="x", labelsize=14)
+
+    path = f"{savedir}/{run_label}/{z_label}_corner.png"
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path, dpi=400)

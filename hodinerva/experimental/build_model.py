@@ -79,52 +79,69 @@ def build_acf_model(sep, Nz_npy, cosmo, hod_model, hod_params, zmin, zmax):
 #     return smf_data
 
 
-def build_smf_data(smf_data_fits, cosmo, z_name):
+def build_smf_data(smf_data_fits, cosmo, z_name, lmass_thresh_h0p7, h0p7=0.7):
     smf_data = Table.read(smf_data_fits)
 
-    lmass = smf_data["Mbin"].data
-    lmass_h1p0 = np.log10((10**lmass) * (cosmo.h**2))
+    diff = np.diff(smf_data["Mbin"].data)
+    assert np.all(diff == diff[0])
+    d_lmass = diff[0]
 
-    phi = smf_data[z_name].data
-    err_hi = smf_data[z_name + "_err_hi"].data
-    err_lo = smf_data[z_name + "_err_lo"].data
+    lmass_h0p7 = smf_data["Mbin"].data
+    lmass_h0p7_lo = lmass_h0p7 - (d_lmass / 2)
+    lmass_h0p7_sel = lmass_h0p7_lo >= lmass_thresh_h0p7
 
-    lphi_h1p0 = np.log10((phi) / (cosmo.h**3))
+    lmass_h0p7 = lmass_h0p7[lmass_h0p7_sel]
+    lmass_h1p0 = lmass_h0p7 + np.log10(h0p7**2)
 
-    lphi_err_hi = np.log10(phi + err_hi) - np.log10(phi)
-    lphi_err_lo = np.log10(phi) - np.log10(phi - err_lo)
+    phi_h0p7 = smf_data[z_name].data[lmass_h0p7_sel]
+    err_h0p7_hi = smf_data[z_name + "_err_hi"].data[lmass_h0p7_sel]
+    err_h0p7_lo = smf_data[z_name + "_err_lo"].data[lmass_h0p7_sel]
+
+    lphi_h0p7 = np.log10(phi_h0p7)
+    lphi_h1p0 = lphi_h0p7 - np.log10(h0p7**3)
+
+    lphi_err_hi = np.log10(phi_h0p7 + err_h0p7_hi) - np.log10(phi_h0p7)
+    lphi_err_lo = np.log10(phi_h0p7) - np.log10(phi_h0p7 - err_h0p7_lo)
 
     lphi_avg_err = (lphi_err_hi + lphi_err_lo) / 2
 
     smf_data = {
         "lmass_h1p0": lmass_h1p0,
         "lphi_h1p0": lphi_h1p0,
-        "lphi_err_h1p0": lphi_avg_err,
+        "lphi_err": lphi_avg_err,
+        "lmass_h0p7": lmass_h0p7,
+        "lphi_h0p7": lphi_h0p7,
+        "d_lmass": d_lmass,
     }
     return smf_data
 
 
-def get_model_smf(model, smf_data_fits, cosmo, z_name):
-    smf_data = build_smf_data(smf_data_fits, cosmo, z_name)
+def get_model_smf(model, smf_data, cosmo):
+    d_lmass = smf_data["d_lmass"]
 
     phi_model_h1p0 = []
-    dlogMbin = np.diff(smf_data["lmass_h1p0"])[0] / 2
     for Mbin in range(0, len(smf_data["lmass_h1p0"])):
         model.update(
-            **{"hod_params": {"sm_thresh": smf_data["lmass_h1p0"][Mbin] - dlogMbin}}
+            **{
+                "hod_params": {
+                    "sm_thresh": smf_data["lmass_h1p0"][Mbin] - (d_lmass / 2)
+                }
+            }
         )
         total_occupation_lo = model._total_occupation
 
         model.update(
-            **{"hod_params": {"sm_thresh": smf_data["lmass_h1p0"][Mbin] + dlogMbin}}
+            **{
+                "hod_params": {
+                    "sm_thresh": smf_data["lmass_h1p0"][Mbin] + (d_lmass / 2)
+                }
+            }
         )
         total_occupation_hi = model._total_occupation
 
         total_occupation = total_occupation_lo - total_occupation_hi
         ngal = tools.spline_integral(model.m, model.dndm * total_occupation)
-        phi_model_h1p0.append(ngal / dlogMbin)
-
-    # lphi_model_h0p7 = np.log10(np.array(phi_model) * (cosmo.h**3))
+        phi_model_h1p0.append(ngal / d_lmass)
 
     lphi_model_h1p0 = np.log10(np.array(phi_model_h1p0))
     return lphi_model_h1p0

@@ -72,6 +72,7 @@ if __name__ == "__main__":
         DEFAULT_COSMOLOGY,
         smf_data_fits,
         smf_z_name,
+        mstar_thresh[zbin][0],
     )
 
     # smf data

@@ -26,6 +26,7 @@ class Fithod:
         cosmo,
         smf_data_fits,
         smf_z_name,
+        smf_thresh,
     ):
         self.zmin = zmin
         self.zmax = zmax
@@ -37,6 +38,7 @@ class Fithod:
         self.cosmo = cosmo
         self.smf_data_fits = smf_data_fits
         self.smf_z_name = smf_z_name
+        self.smf_thresh = smf_thresh
 
     def setup_w_data(self, sm_thresh, w_data_ascii, cov_jknife_npy=None, mock_out=None):
         """Get correlation function data"""
@@ -77,7 +79,9 @@ class Fithod:
         return w_data
 
     def setup_smf_data(self):
-        self.smf_data = build_smf_data(self.smf_data_fits, self.cosmo, self.smf_z_name)
+        self.smf_data = build_smf_data(
+            self.smf_data_fits, self.cosmo, self.smf_z_name, self.smf_thresh
+        )
 
     def setup_model(self, sep):
         self.model = build_acf_model(
@@ -96,9 +100,7 @@ class Fithod:
             self.w_data,
             self.rr_ic_sep,
             self.rr_ic_counts,
-            self.smf_data_fits,
             self.smf_data,
-            self.smf_z_name,
             self.cosmo,
         )
 

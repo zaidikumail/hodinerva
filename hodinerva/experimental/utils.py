@@ -91,7 +91,7 @@ def get_quantiles(backend_h5, discard=0, thin=1):
     _, n_param = flatchain.shape
     for i in range(0, n_param):
         quantiles.append(corner.quantile(flatchain[:, i], [0.16, 0.5, 0.84]))
-    return quantiles
+    return quantiles, flatchain
 
 
 def save_hod_post(chain_dir, savedir, savename, discard=0, thin=1):
@@ -171,7 +171,7 @@ def save_hod_post(chain_dir, savedir, savename, discard=0, thin=1):
 
     for j in range(0, n_samples):
         backend_h5 = chain_dir + "/" + chains[j]
-        quantiles = get_quantiles(backend_h5, discard=discard, thin=thin)
+        quantiles, flatchain = get_quantiles(backend_h5, discard=discard, thin=thin)
 
         hod_post["zbin"][j] = chains[j].split(".")[0]
         hod_post["smhm_m0_0"][j] = quantiles[0]
