@@ -104,12 +104,14 @@ def combine_tpcf_fields(field_bns, samples, weights, savedir):
             corr,
             N,
         ) = get_combined_corr_data(field_bns, sample, weights)
-        cov = get_combined_cov(field_bns, sample, weights)
-        nz = get_combined_nz(field_bns, sample, weights)
 
+        cov = get_combined_cov(field_bns, sample, weights)
         save_cov = savedir + "/cov/cov_" + sample
         save_w_theta = savedir + "/w_theta/w_" + sample.split(".")[0] + ".dat"
-        save_nz = savedir + "/nz/nz_" + sample
-
         save_cov_and_w_theta(sep, corr, cov, DD, DR, RR, N, save_cov, save_w_theta)
+
+        if "rr" in sample:
+            continue
+        nz = get_combined_nz(field_bns, sample, weights)
+        save_nz = savedir + "/nz/nz_" + sample
         np.save(save_nz, nz)

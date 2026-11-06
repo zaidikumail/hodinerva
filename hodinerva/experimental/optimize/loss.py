@@ -1,6 +1,6 @@
 import numpy as np
 
-from ..build_model import get_model_smf
+from ..kernels.build_model import get_ic, get_model_smf
 
 
 def chi_sq(
@@ -23,26 +23,13 @@ def chi_sq(
 # correlation function term
 def get_w_chi_sq(w_data, model, rr_ic_sep, rr_ic_counts):
     chi_sq = 0.0
-    for Mth in range(0, len(w_data)):
+    for Mth in range(len(w_data)):
         model.update(**{"hod_params": {"sm_thresh": w_data[Mth]["sm_thresh_h1p0"]}})
 
-        # update the thetas of the model to calculate the IC with the new hod parameters
-        model.update(
-            theta_min=rr_ic_sep.min() * np.pi / 180.0,
-            theta_max=rr_ic_sep.max() * np.pi / 180.0,
-            theta_num=len(rr_ic_sep),
-        )
-        IC = np.sum(model.angular_corr_gal * rr_ic_counts) / np.sum(rr_ic_counts)
-
-        # revert back the thetas to calculate the chi-square
-        model.update(
-            theta_min=w_data[Mth]["sep"].min() * np.pi / 180.0,
-            theta_max=w_data[Mth]["sep"].max() * np.pi / 180.0,
-            theta_num=len(w_data[Mth]["sep"]),
-        )
+        ic = get_ic(model, rr_ic_sep, rr_ic_counts)
 
         # Add the contribution to the chi_sq of the current Mth sample
-        corr_model = model.angular_corr_gal - IC
+        corr_model = model.angular_corr_gal - ic
         corr_datum = w_data[Mth]["corr"]
         C_inv = w_data[Mth]["C_inv"]
 

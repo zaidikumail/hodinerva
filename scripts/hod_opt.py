@@ -1,17 +1,18 @@
 import argparse
 import os
+
+os.environ["OMP_NUM_THREADS"] = "1"
 from pathlib import Path
 
 import emcee
 import numpy as np
 import yaml
 from astropy.io import ascii
-from pycorr import TwoPointCorrelationFunction, setup_logging
+from pycorr import setup_logging
 
 from hodinerva.experimental.defaults import DEFAULT_COSMOLOGY, HOD_INITIALIZE_PARAMS
 from hodinerva.experimental.optimize.fithod import Fithod
 
-os.environ["OMP_NUM_THREADS"] = "1"
 setup_logging()
 
 if __name__ == "__main__":
@@ -38,9 +39,9 @@ if __name__ == "__main__":
 
     ####################################################################################
 
-    rr_ic = TwoPointCorrelationFunction.load(Path(cfg["base_path"]) / cfg["rr_ic"])
-    rr_ic_sep = rr_ic.sep
-    rr_ic_counts = rr_ic.R1R2.normalized_wcounts()
+    w_rr_ic = ascii.read(Path(cfg["base_path"]) / cfg["w_data_dir"] / "w_rr_ic.dat")
+    rr_ic_sep = w_rr_ic["sep[deg]"].data
+    rr_ic_counts = w_rr_ic["RR"].data
 
     w_data_ascii = Path(cfg["base_path"]) / cfg["w_data_dir"] / f"w_{samples[0]}.dat"
     print(w_data_ascii)
@@ -176,7 +177,7 @@ if __name__ == "__main__":
 
     sampler = fit_hod.run_mcmc(
         nwalkers=cfg["n_walkers"],
-        ndim=cfg["n_dim"],
+        ndim=len(fit_hod.param_names),
         nsteps=cfg["n_steps"],
         restart=cfg["restart"],
     )

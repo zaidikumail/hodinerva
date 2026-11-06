@@ -27,6 +27,8 @@ def plot_med_smhm(med_cen_smhm_dir, run_label, zbins, cosmo, savedir):
         f"{med_cen_smhm_dir}/{run_label}/{run_label}_med_cen_mstar_upp.npy"
     )
 
+    n_zbins = len(zbins)
+
     fs = 12
     figsize = (7.1, 4.0)
     margins = dict(hspace=0, wspace=0, left=0.11, right=0.89, bottom=0.1, top=0.98)
@@ -39,7 +41,7 @@ def plot_med_smhm(med_cen_smhm_dir, run_label, zbins, cosmo, savedir):
     fig_smhm, axs = plt.subplots(2, 3, figsize=figsize, gridspec_kw=margins)
     ax_smhm = axs.ravel()
 
-    for zbin in range(1):
+    for zbin in range(n_zbins):
         if zbin == 0:
             mean_cenSHMR_med_z1 = med_cen_mstar_med[zbin] / HALO_MASS_H0P7
             med_cen_mstar_med_z1 = med_cen_mstar_med[zbin]

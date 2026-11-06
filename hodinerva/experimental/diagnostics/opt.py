@@ -8,8 +8,8 @@ import numpy as np
 from astropy.io import ascii
 from scipy import interpolate
 
-from ..build_model import build_acf_model, build_smf_data, get_model_smf
 from ..defaults import DEFAULT_COSMOLOGY, HOD_INITIALIZE_PARAMS
+from ..kernels.build_model import build_acf_model, build_smf_data, get_ic, get_model_smf
 from ..utils import get_quantiles
 from .plot_utils import scale_luminance
 
@@ -213,6 +213,10 @@ def plot_tpcf(
     # lmass = smf_data["Mbin"].data
     smf_z_names = ["2.0", "3.0", "4.0", "5.0", "6.0", "7.5", "10.0"]
 
+    w_rr_ic = ascii.read(w_data_dir + "/w_rr_ic.dat")
+    rr_ic_sep = w_rr_ic["sep[deg]"].data
+    rr_ic_counts = w_rr_ic["RR"].data
+
     for zbin in range(len(zbins)):
         try:
             z_name = "z" + str(zbin + 1)
@@ -291,7 +295,7 @@ def plot_tpcf(
             )
 
             inset_smf.set_ylim(-6, 0.5)
-            inset_smf.set_xlim(6.2, 12)
+            inset_smf.set_xlim(7.5, 12)
             inset_smf.set_ylabel(
                 "log$_{10}$ (\u03A6)", fontsize=fontsize / 2, labelpad=-1
             )
@@ -333,11 +337,18 @@ def plot_tpcf(
                 Nz_npy = Nz_dir + "/nz_" + sample_name + ".npy"
                 Nz = np.load(Nz_npy)
                 nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
+
                 hod_params["sm_thresh"] = mstar_thresh[zbin][mthresh]
+
                 acf_model.update(p1=nz, hod_params=hod_params)
 
+                ic = get_ic(acf_model, rr_ic_sep, rr_ic_counts)
+
                 ax[row][col].plot(
-                    sep, acf_model.angular_corr_gal, color=colors_z[zbin][mthresh], lw=1
+                    sep,
+                    acf_model.angular_corr_gal - ic,
+                    color=colors_z[zbin][mthresh],
+                    lw=1,
                 )
 
             ax[row][col].set_yscale("log")

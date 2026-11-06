@@ -13,14 +13,8 @@ def build_acf_model(sep, Nz_npy, cosmo, hod_model, hod_params, zmin, zmax):
     Nz = np.load(Nz_npy)
     nz = interpolate.interp1d(Nz[:, 0], Nz[:, 1], kind="cubic")
 
-    """Get Model"""
-    # To choose theta, set it in degrees then convert to radians
-    # theta_min = rr_ic_sep.min() * np.pi / 180.0
-    # theta_max = rr_ic_sep.max() * np.pi / 180.0
-    # theta_num = len(rr_ic_sep)
-
     model = AngularCF(
-        hmf_model="Tinker10",
+        hmf_model="Behroozi",
         bias_model="Tinker10",
         # sd_bias_model='TinkerSD05',
         transfer_model="EH",
@@ -44,42 +38,32 @@ def build_acf_model(sep, Nz_npy, cosmo, hod_model, hod_params, zmin, zmax):
         p_of_z=True,
     )
 
-    # model.update(
-    #     theta_min=sep.min() * np.pi / 180.0,
-    #     theta_max=sep.max() * np.pi / 180.0,
-    #     theta_num=len(sep),
-    # )
-
     return model.clone()
 
 
-# def build_smf_data_old(smf_data_ascii, cosmo):
-#     smf_data = ascii.read(smf_data_ascii)
-#     lmass_low = smf_data["lmasslow"].data
-#     lmass = smf_data["lmass"].data
-#     lmass_upp = smf_data["lmassupp"].data
-#     lphi = smf_data["lphi"].data
-#     lphi_h1p0 = np.log10((10**lphi) / (cosmo.h**3))
+def get_ic(acf_model, rr_ic_sep, rr_ic_counts):
+    acf_model_for_ic = acf_model.clone()
 
-#     frac_errlow = smf_data["lphi_errlow"].data / lphi
-#     lphi_errlow_h1p0 = frac_errlow * lphi_h1p0
+    acf_model_for_ic.update(
+        theta_min=rr_ic_sep.min() * np.pi / 180.0,
+        theta_max=rr_ic_sep.max() * np.pi / 180.0,
+        theta_num=len(rr_ic_sep),
+    )
+    ic = np.sum(acf_model_for_ic.angular_corr_gal * rr_ic_counts) / np.sum(rr_ic_counts)
 
-#     frac_errupp = smf_data["lphi_errupp"].data / lphi
-#     lphi_errupp_h1p0 = frac_errupp * lphi_h1p0
-
-#     lphi_avg_err = (lphi_errlow_h1p0 + lphi_errupp_h1p0) / 2
-
-#     smf_data = {
-#         "lmass_low_h1p0": np.log10((10**lmass_low) * (cosmo.h**2)),
-#         "lmass_h1p0": np.log10((10**lmass) * (cosmo.h**2)),
-#         "lmass_upp_h1p0": np.log10((10**lmass_upp) * (cosmo.h**2)),
-#         "lphi_h1p0": lphi_h1p0,
-#         "lphi_err_h1p0": lphi_avg_err,
-#     }
-#     return smf_data
+    return ic
 
 
 def build_smf_data(smf_data_fits, cosmo, z_name, lmass_thresh_h0p7, h0p7=0.7):
+    """
+    Notes:
+        Builds the SMF ready for fitting:
+            - Drops bins below completeness limit at that redshift, lmass_thresh_h0p7
+            - Drops any bins with phi <= 0
+            - For bins where phi - err_lo <=0,
+            the output, lphi_avg_err is just lphi_err_hi,
+            otherwise an average of (lphi_err_hi, lphi_err_lo)
+    """
     smf_data = Table.read(smf_data_fits)
 
     diff = np.diff(smf_data["Mbin"].data)
@@ -87,23 +71,30 @@ def build_smf_data(smf_data_fits, cosmo, z_name, lmass_thresh_h0p7, h0p7=0.7):
     d_lmass = diff[0]
 
     lmass_h0p7 = smf_data["Mbin"].data
+    phi_h0p7 = smf_data[z_name].data
+    err_h0p7_hi = smf_data[z_name + "_err_hi"].data
+    err_h0p7_lo = smf_data[z_name + "_err_lo"].data
+
     lmass_h0p7_lo = lmass_h0p7 - (d_lmass / 2)
-    lmass_h0p7_sel = lmass_h0p7_lo >= lmass_thresh_h0p7
+    lmass_h0p7_sel = (lmass_h0p7_lo >= lmass_thresh_h0p7) & (phi_h0p7 > 0)
 
     lmass_h0p7 = lmass_h0p7[lmass_h0p7_sel]
     lmass_h1p0 = lmass_h0p7 + np.log10(h0p7**2)
 
-    phi_h0p7 = smf_data[z_name].data[lmass_h0p7_sel]
-    err_h0p7_hi = smf_data[z_name + "_err_hi"].data[lmass_h0p7_sel]
-    err_h0p7_lo = smf_data[z_name + "_err_lo"].data[lmass_h0p7_sel]
+    phi_h0p7 = phi_h0p7[lmass_h0p7_sel]
+    err_h0p7_hi = err_h0p7_hi[lmass_h0p7_sel]
+    err_h0p7_lo = err_h0p7_lo[lmass_h0p7_sel]
 
     lphi_h0p7 = np.log10(phi_h0p7)
     lphi_h1p0 = lphi_h0p7 - np.log10(h0p7**3)
 
     lphi_err_hi = np.log10(phi_h0p7 + err_h0p7_hi) - np.log10(phi_h0p7)
-    lphi_err_lo = np.log10(phi_h0p7) - np.log10(phi_h0p7 - err_h0p7_lo)
 
-    lphi_avg_err = (lphi_err_hi + lphi_err_lo) / 2
+    lo_neg = (phi_h0p7 - err_h0p7_lo) <= 0
+    with np.errstate(invalid="ignore", divide="ignore"):
+        lphi_err_lo = np.log10(phi_h0p7) - np.log10(phi_h0p7 - err_h0p7_lo)
+
+    lphi_avg_err = np.where(lo_neg, lphi_err_hi, (lphi_err_hi + lphi_err_lo) / 2)
 
     smf_data = {
         "lmass_h1p0": lmass_h1p0,
