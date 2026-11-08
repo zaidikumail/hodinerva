@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.linalg import pinv
 
 from ..kernels.build_model import get_ic, get_model_smf
 
@@ -31,7 +32,14 @@ def get_w_chi_sq(w_data, model, rr_ic_sep, rr_ic_counts):
         # Add the contribution to the chi_sq of the current Mth sample
         corr_model = model.angular_corr_gal - ic
         corr_datum = w_data[Mth]["corr"]
-        C_inv = w_data[Mth]["C_inv"]
+        # C_inv = w_data[Mth]["C_inv"]
+
+        # temporarily not fit corr<0 bins
+        Cov = w_data[Mth]["Cov"]
+        keep = corr_datum > 0
+        corr_model = corr_model[keep]
+        corr_datum = corr_datum[keep]
+        C_inv = pinv(Cov[np.ix_(keep, keep)])
 
         corr_diff = corr_datum - corr_model
         d_chi = corr_diff.T @ C_inv @ corr_diff
